@@ -1,0 +1,14 @@
+{
+  "world_rules": {
+    "magic_system": "Spells consume mana. Magic circles require red chalk to be drawn accurately. Level 1 mages cannot cast tier-2 elemental magic.",
+    "timeline": "The Great Eclipse happened in Year 310. The story starts in Year 315."
+  },
+  "characters": [
+    {
+      "name": "Character C",
+      "birth_year": 312,
+      "abilities": ["Basic Mana Sensing"],
+      "weaknesses": ["Silver weapons"]
+    }
+  ]
+}
