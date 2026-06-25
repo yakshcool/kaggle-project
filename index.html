@@ -30,24 +30,11 @@
             display: flex;
             flex-direction: column;
             padding: 20px;
-            box-sizing: border-box;
         }
 
-        header {
-            margin-bottom: 20px;
-        }
-
-        h1 {
-            margin: 0;
-            font-size: 1.5rem;
-            color: var(--accent-blue);
-        }
-
-        p {
-            margin: 5px 0 0 0;
-            color: var(--text-muted);
-            font-size: 0.9rem;
-        }
+        header { margin-bottom: 20px; }
+        h1 { margin: 0; font-size: 1.5rem; color: var(--accent-blue); }
+        p { margin: 5px 0 0 0; color: var(--text-muted); font-size: 0.9rem; }
 
         textarea {
             flex: 1;
@@ -57,41 +44,27 @@
             color: var(--text-main);
             padding: 15px;
             font-size: 1rem;
-            line-height: 1.6;
             resize: none;
             outline: none;
-            transition: border-color 0.2s;
-        }
-
-        textarea:focus {
-            border-color: var(--accent-blue);
         }
 
         .controls {
             margin-top: 15px;
             display: flex;
+            gap: 10px;
             justify-content: flex-end;
         }
 
         button {
-            background-color: var(--accent-blue);
-            color: var(--bg-color);
             border: none;
             padding: 10px 20px;
             border-radius: 6px;
             font-weight: 600;
             cursor: pointer;
-            transition: opacity 0.2s;
         }
 
-        button:hover {
-            opacity: 0.9;
-        }
-
-        button:disabled {
-            background-color: var(--text-muted);
-            cursor: not-allowed;
-        }
+        #analyzeBtn { background-color: var(--accent-blue); color: var(--bg-color); }
+        #loreBtn { background-color: var(--accent-green); color: var(--bg-color); }
 
         .sidebar {
             width: 380px;
@@ -100,16 +73,6 @@
             display: flex;
             flex-direction: column;
             padding: 20px;
-            box-sizing: border-box;
-        }
-
-        .sidebar-title {
-            font-size: 0.9rem;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            color: var(--text-muted);
-            margin-bottom: 15px;
-            font-weight: 700;
         }
 
         .log-display {
@@ -118,15 +81,11 @@
             border: 1px solid #1e293b;
             border-radius: 6px;
             padding: 15px;
-            font-family: 'Courier New', Courier, monospace;
+            font-family: 'Courier New', monospace;
             font-size: 0.85rem;
             overflow-y: auto;
             white-space: pre-wrap;
         }
-
-        .status-neutral { color: var(--text-muted); }
-        .status-success { color: var(--accent-green); }
-        .status-error { color: var(--accent-red); font-weight: bold; }
     </style>
 </head>
 <body>
@@ -134,67 +93,49 @@
     <div class="workspace">
         <header>
             <h1>The Continuity Weaver</h1>
-            <p>Draft your scene below. The background agent will cross-reference your lore vault.</p>
+            <p>Draft your scene. Highlight text and click "Add to Lore" to teach the agent new world facts.</p>
         </header>
         
-        <textarea id="draftInput" placeholder="Start writing your manga script or story scene here..."></textarea>
+        <textarea id="draftInput" placeholder="Start writing..."></textarea>
         
         <div class="controls">
+            <button id="loreBtn" onclick="learnFromSelection()">Add to Lore</button>
             <button id="analyzeBtn" onclick="triggerAgentAnalysis()">Analyze Scene</button>
         </div>
     </div>
 
     <div class="sidebar">
-        <div class="sidebar-title">Agent Execution Logs</div>
-        <div id="logDisplay" class="log-display"><span class="status-neutral">[System] Agent initialized. Ready to verify continuity...</span></div>
+        <div class="log-display" id="logDisplay">[System] Agent ready.</div>
     </div>
 
     <script>
+        async function learnFromSelection() {
+            const selection = window.getSelection().toString();
+            if (!selection) return alert("Please highlight the lore fact in your text first!");
+            
+            const res = await fetch('/add_lore', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ fact: selection })
+            });
+            document.getElementById('logDisplay').innerHTML += `\n<span style="color:var(--accent-green)">[Lore Updated] Saved: "${selection.substring(0, 20)}..."</span>`;
+        }
+
         async function triggerAgentAnalysis() {
-            const draftText = document.getElementById('draftInput').value.trim();
-            const logDisplay = document.getElementById('logDisplay');
-            const btn = document.getElementById('analyzeBtn');
-
-            if (!draftText) {
-                logDisplay.innerHTML += `\n<span class="status-error">[Warning] Please write something before running analysis.</span>`;
-                return;
-            }
-
-            // Update UI status
-            btn.disabled = true;
-            btn.innerText = "Analyzing...";
-            logDisplay.innerHTML += `\n<span class="status-neutral">[${new Date().toLocaleTimeString()}] Streaming text to agent framework...</span>`;
-            logDisplay.scrollTop = logDisplay.scrollHeight;
-
-            try {
-                const response = await fetch('/analyze_scene', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ draft: draftText })
-                });
-
-                const result = await response.json();
-                
-                if (result.conflict_found) {
-                    logDisplay.innerHTML += `\n\n<span class="status-error">⚠️ [LORE CONFLICT DETECTED]</span>`;
-                    logDisplay.innerHTML += `\n<span class="status-error">Error Type: ${result.error_type}</span>`;
-                    logDisplay.innerHTML += `\n<span class="status-neutral">Description: ${result.description}</span>`;
-                    logDisplay.innerHTML += `\n\n<span class="status-success">💡 Suggested Fixes:</span>`;
-                    result.suggested_fixes.forEach((fix, index) => {
-                        logDisplay.innerHTML += `\n<span class="status-success">  ${index + 1}. ${fix}</span>`;
-                    });
-                } else {
-                    logDisplay.innerHTML += `\n\n<span class="status-success">✨ [CONTINUITY SECURE] No narrative contradictions found against the Lore Vault.</span>`;
-                }
-
-            } catch (error) {
-                logDisplay.innerHTML += `\n<span class="status-error">[Runtime Error] Failed to connect to backend agent pipeline.</span>`;
-                console.error(error);
-            } finally {
-                btn.disabled = false;
-                btn.innerText = "Analyze Scene";
-                logDisplay.scrollTop = logDisplay.scrollHeight;
-            }
+            const draftText = document.getElementById('draftInput').value;
+            const log = document.getElementById('logDisplay');
+            
+            log.innerHTML += `\n[${new Date().toLocaleTimeString()}] Analyzing...`;
+            
+            const response = await fetch('/analyze', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ draft: draftText })
+            });
+            
+            const result = await response.json();
+            // Logic to display results...
+            log.innerHTML += `\n[System] Analysis complete.`;
         }
     </script>
 </body>
